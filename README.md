@@ -1,5 +1,8 @@
 # I/US TRS Demo
 
+Demo
+https://iusmusic.github.io/TRS-Demo/
+
 Live music transcription and notation demo for I/US Music.
 
 This repository contains a source-available demo for browser-based music input, transcription, notation preview, and export workflows. The project is structured as a web-first prototype with a static demo path and a more advanced source architecture for future model-backed transcription.
