@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>I/US Live Music Transcription</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar panel">
+      <div class="brand">
+        <img class="logo" src="./assets/logoofficial.png" alt="I/US logo" />
+        <div class="brand-copy">
+          <div class="kicker">Official</div>
+          <h1>Live Music Transcription</h1>
+          <div class="small intro-copy">Prebuilt static web package. Runs instantly with no install step.</div>
+        </div>
+      </div>
+      <div class="topbar-controls">
+        <label class="compact-field">
+          <span>Theme</span>
+          <select id="themeSelect">
+            <option value="dark">Dark</option>
+            <option value="contrast">High Contrast</option>
+          </select>
+        </label>
+        <div class="status" id="backendLabel">Heuristic live detector · standalone build</div>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <aside class="panel left-panel">
+        <div class="section-head">
+          <h2>Configuration</h2>
+          <div class="status" id="listeningValue">Idle</div>
+        </div>
+
+        <div class="controls-grid">
+          <label>
+            <span>Noise Gate</span>
+            <input id="noiseGate" type="range" min="0" max="0.2" step="0.005" value="0.03" />
+            <div class="small" id="noiseGateValue">0.03</div>
+          </label>
+          <label>
+            <span>Latency / Buffer</span>
+            <input id="latencyMs" type="range" min="40" max="400" step="10" value="120" />
+            <div class="small" id="latencyValue">120ms</div>
+          </label>
+          <label>
+            <span>Input Gain</span>
+            <input id="inputGain" type="range" min="0.5" max="3" step="0.05" value="1" />
+            <div class="small" id="inputGainValue">1.00</div>
+          </label>
+          <label>
+            <span>Confidence Threshold</span>
+            <input id="confidenceThreshold" type="range" min="0.05" max="1" step="0.05" value="0.25" />
+            <div class="small" id="confidenceValue">0.25</div>
+          </label>
+          <label class="span-2">
+            <span>Quantization Strength</span>
+            <input id="quantizationStrength" type="range" min="0" max="1" step="0.05" value="0.7" />
+            <div class="small" id="quantValue">0.70</div>
+          </label>
+          <label class="span-2">
+            <span>Instrument Preset</span>
+            <select id="profile">
+              <option value="voice">Voice / humming</option>
+              <option value="violin">Violin</option>
+              <option value="guitar">Guitar</option>
+              <option value="keyboard">Keyboard</option>
+              <option value="polyphonic-hint">Polyphonic hint</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="subpanel">
+          <div class="button-row block-row">
+            <button class="btn btn-solid" id="startMicBtn">Start Mic</button>
+            <button class="btn" id="stopMicBtn">Stop Mic</button>
+          </div>
+          <div class="button-row block-row top-gap">
+            <button class="btn btn-solid" id="connectMidiBtn">Connect MIDI</button>
+            <button class="btn" id="clearBtn">Clear</button>
+          </div>
+        </div>
+
+        <div class="subpanel">
+          <div class="small-head">
+            <h3>Export</h3>
+            <div class="status">Local</div>
+          </div>
+          <div class="button-row compact block-row">
+            <button class="btn" id="exportJsonBtn">JSON</button>
+            <button class="btn" id="exportTxtBtn">TXT</button>
+            <button class="btn" id="exportMusicXmlBtn">MusicXML</button>
+            <button class="btn" onclick="window.print()">PDF</button>
+          </div>
+        </div>
+      </aside>
+
+      <div class="content">
+        <section class="panel">
+          <div class="transport">
+            <div>
+              <h2>Score View</h2>
+              <div class="small">Self-contained static build with the same I/US visual system.</div>
+            </div>
+            <div class="transport-stats">
+              <div><span>Key</span><strong id="keyBadge">C major</strong></div>
+              <div><span>Meter</span><strong id="meterBadge">4/4</strong></div>
+              <div><span>BPM</span><strong id="bpmBadge">120</strong></div>
+              <div><span>Backend</span><strong id="backendBadge">Heuristic</strong></div>
+            </div>
+          </div>
+          <div class="score-wrap card" id="scoreView">
+            <div class="small">Play or sing into the app to see notes appear here.</div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <h2>Detection</h2>
+            <div class="status" id="midiInputsValue">MIDI off</div>
+          </div>
+          <div class="controls-grid info-grid">
+            <div class="seed-row stat-card"><span>Mic level</span><strong class="stat-value" id="micLevel">0.000</strong><span class="pill">Live</span></div>
+            <div class="seed-row stat-card"><span>Last chord</span><strong class="stat-value" id="lastChordValue">—</strong><span class="pill">Theory</span></div>
+            <div class="seed-row stat-card span-2"><span>Events captured</span><strong class="stat-value" id="eventsCount">0</strong><span class="pill">Timeline</span></div>
+          </div>
+
+          <div class="subpanel">
+            <div class="small-head">
+              <h3>Recent Notes</h3>
+              <div class="status">Last 12</div>
+            </div>
+            <table class="table">
+              <thead><tr><th>Note</th><th>Dur</th><th>Conf</th><th>Src</th></tr></thead>
+              <tbody id="recentNotesBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel arranger-panel">
+          <div class="section-head">
+            <h2>Timeline</h2>
+            <div class="status">Live lane</div>
+          </div>
+          <div class="timeline" id="timeline"></div>
+          <div class="small top-gap">This prebuilt package uses a browser-only heuristic detector so it opens immediately on GitHub Pages or any static host.</div>
+        </section>
+      </div>
+    </div>
+  </div>
+  <script src="./app.js"></script>
+</body>
+</html>
