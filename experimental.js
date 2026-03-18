@@ -2,6 +2,7 @@ import { startAudio, stopAudio, tickAudio, connectMidi } from './assets/js/audio
 import { renderApp } from './assets/js/render.js';
 import { exportMusicXml, exportMidi, downloadFile } from './assets/js/exporters.js';
 import { quantizeEvent, estimateKey, estimateMeter, detectTempo, smartPruneEvents, midiToNoteName } from './assets/js/transcription.js';
+import { createBasicPitchBackend } from './assets/js/basicpitch.js';
 
 (() => {
   const SESSION_KEY = 'trsSession';
@@ -24,17 +25,21 @@ import { quantizeEvent, estimateKey, estimateMeter, detectTempo, smartPruneEvent
     ctx: null,
     analyser: null,
     gainNode: null,
+    processorNode: null,
+    processorMuteNode: null,
     raf: 0,
     lastActive: 0,
     noteStart: 0,
     activeMidi: null,
     midiAccess: null,
     activeNotes: new Map(),
-    backendLabel: 'Experimental Heuristic+',
+    backendLabel: 'Spotify Basic Pitch ONNX · loading',
+    backendMode: 'ml',
+    backendStatus: 'Model pending',
+    basicPitch: null,
+    mlBusy: false,
     undoStack: [],
   };
-
-  window.trsExperimental = window.trsExperimental || { mlEnabled: false, shareUrl: '' };
 
   function replaceWithClone(id) {
     const el = document.getElementById(id);
@@ -84,6 +89,8 @@ import { quantizeEvent, estimateKey, estimateMeter, detectTempo, smartPruneEvent
     stopAudio: () => stopAudio(state, hooks),
     tickAudio: () => tickAudio(state, hooks),
     connectMidi: () => connectMidi(state, hooks),
+    onAudioChunk,
+    onAudioStopped,
     pushEvent,
     render,
   };
@@ -92,9 +99,35 @@ import { quantizeEvent, estimateKey, estimateMeter, detectTempo, smartPruneEvent
   hydrateFromQuery();
   bindControls();
   render();
+  initBackend();
+
+  async function initBackend() {
+    state.backendLabel = 'Spotify Basic Pitch ONNX · loading';
+    state.backendStatus = 'Fetching model';
+    render();
+    try {
+      state.basicPitch = await createBasicPitchBackend({
+        onStatus(message) {
+          state.backendStatus = message;
+          render();
+        },
+      });
+      state.backendMode = 'ml';
+      state.backendLabel = 'Spotify Basic Pitch ONNX';
+      state.backendStatus = 'Ready';
+    } catch (error) {
+      console.error('TRS:Basic Pitch backend failed', error);
+      state.basicPitch = null;
+      state.backendMode = 'heuristic';
+      state.backendLabel = 'Heuristic fallback';
+      state.backendStatus = error?.message || 'ML backend failed';
+    }
+    render();
+  }
 
   function saveSession() {
     localStorage.setItem(SESSION_KEY, JSON.stringify(state.events));
+    window.trsExperimental = window.trsExperimental || {};
     window.trsExperimental.shareUrl = `${location.origin}${location.pathname}?data=${encodeURIComponent(btoa(JSON.stringify(state.events)))}`;
   }
 
@@ -154,7 +187,6 @@ import { quantizeEvent, estimateKey, estimateMeter, detectTempo, smartPruneEvent
 
     els.profile.addEventListener('change', (e) => {
       state.settings.profile = e.target.value;
-      state.backendLabel = e.target.value === 'polyphonic-hint' ? 'Experimental Polyphonic Hint' : 'Experimental Heuristic+';
       render();
     });
 
@@ -219,23 +251,65 @@ import { quantizeEvent, estimateKey, estimateMeter, detectTempo, smartPruneEvent
 
   function pushEvent(raw) {
     try {
-      console.groupCollapsed('TRS:pushEvent');
-      console.log('incoming', raw);
-      snapshotForUndo();
       const event = quantizeEvent(raw, state.settings, state.transport.bpm);
       state.events = smartPruneEvents([...state.events, event], 500, 60000, 90);
       deriveTransport();
       saveSession();
-      console.log('stored events', state.events.length);
-      console.groupEnd();
       render();
     } catch (error) {
       console.error('TRS:pushEvent failure', error, raw);
-      console.groupEnd();
     }
   }
 
+  function onAudioChunk(samples, inputRate) {
+    if (!state.basicPitch || state.backendMode !== 'ml') return;
+    state.basicPitch.pushAudioChunk(samples, inputRate);
+    maybeRunMlInference();
+  }
+
+  async function maybeRunMlInference(forceFlush = false) {
+    if (!state.basicPitch || state.backendMode !== 'ml' || state.mlBusy) return;
+    state.mlBusy = true;
+    try {
+      state.backendStatus = forceFlush ? 'Flushing final notes' : 'Processing live audio';
+      const events = forceFlush
+        ? await state.basicPitch.flush({
+            profile: state.settings.profile,
+            onsetThreshold: 0.45,
+            frameThreshold: Math.max(0.18, state.settings.confidenceThreshold * 0.9),
+          })
+        : await state.basicPitch.process(performance.now(), {
+            profile: state.settings.profile,
+            onsetThreshold: 0.45,
+            frameThreshold: Math.max(0.18, state.settings.confidenceThreshold * 0.9),
+            inferenceIntervalMs: Math.max(350, state.settings.latencyMs * 4),
+            stableTailMs: Math.max(250, state.settings.latencyMs * 2),
+          });
+      for (const event of events) pushEvent(event);
+      state.backendStatus = state.transport.isListening ? 'Processing live audio' : 'Ready';
+    } catch (error) {
+      console.error('TRS:ML inference failure', error);
+      state.backendMode = 'heuristic';
+      state.backendLabel = 'Heuristic fallback';
+      state.backendStatus = error?.message || 'Inference failed';
+    } finally {
+      state.mlBusy = false;
+      render();
+    }
+  }
+
+  function onAudioStopped() {
+    if (!state.basicPitch || state.backendMode !== 'ml') return;
+    maybeRunMlInference(true);
+    state.basicPitch.reset();
+    state.backendStatus = 'Ready';
+  }
+
   function render() {
+    const suffix = state.backendStatus ? ` · ${state.backendStatus}` : '';
+    state.backendLabel = state.backendMode === 'ml'
+      ? `Spotify Basic Pitch ONNX${suffix}`
+      : `Heuristic fallback${suffix}`;
     renderApp(state, els);
   }
 })();

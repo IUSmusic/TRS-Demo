@@ -112,6 +112,19 @@
 
   function stopAudio() {
     cancelAnimationFrame(state.raf);
+    const now = performance.now();
+    if (state.activeMidi !== null && state.noteStart) {
+      pushEvent({
+        id: crypto.randomUUID(),
+        source: 'audio',
+        pitchMidi: state.activeMidi,
+        frequencyHz: 440 * Math.pow(2, (state.activeMidi - 69) / 12),
+        startMs: state.noteStart,
+        durationMs: Math.max(60, now - state.noteStart),
+        confidence: 0.5,
+        staff: state.activeMidi >= 60 ? 0 : 1,
+      });
+    }
     if (state.stream) state.stream.getTracks().forEach((t) => t.stop());
     if (state.ctx) state.ctx.close();
     state.stream = null;
@@ -120,6 +133,7 @@
     state.gainNode = null;
     state.transport.isListening = false;
     state.activeMidi = null;
+    state.noteStart = 0;
     render();
   }
 
@@ -370,6 +384,6 @@
         bestOffset = offset;
       }
     }
-    return bestCorrelation > 0.9 && bestOffset > 0 ? sampleRate / bestOffset : -1;
+    return bestCorrelation > 0.75 && bestOffset > 0 ? sampleRate / bestOffset : -1;
   }
 })();
