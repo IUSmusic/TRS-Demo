@@ -35,6 +35,7 @@
     confidenceThreshold: document.getElementById('confidenceThreshold'),
     quantizationStrength: document.getElementById('quantizationStrength'),
     profile: document.getElementById('profile'),
+    themeSelect: document.getElementById('themeSelect'),
     noiseGateValue: document.getElementById('noiseGateValue'),
     latencyValue: document.getElementById('latencyValue'),
     inputGainValue: document.getElementById('inputGainValue'),
@@ -43,6 +44,7 @@
     keyBadge: document.getElementById('keyBadge'),
     meterBadge: document.getElementById('meterBadge'),
     bpmBadge: document.getElementById('bpmBadge'),
+    backendBadge: document.getElementById('backendBadge'),
     micLevel: document.getElementById('micLevel'),
     listeningValue: document.getElementById('listeningValue'),
     midiInputsValue: document.getElementById('midiInputsValue'),
@@ -93,6 +95,7 @@
       stopAudio();
       state.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
       state.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: state.settings.latencyMs < 100 ? 'interactive' : 'balanced' });
+      await state.ctx.resume();
       const source = state.ctx.createMediaStreamSource(state.stream);
       state.analyser = state.ctx.createAnalyser();
       state.analyser.fftSize = 2048;
@@ -133,6 +136,19 @@
     if (open) {
       const midi = Math.round(69 + 12 * Math.log2(freq / 440));
       if (state.activeMidi === null) {
+        state.activeMidi = midi;
+        state.noteStart = now;
+      } else if (Math.abs(midi - state.activeMidi) >= 1) {
+        pushEvent({
+          id: crypto.randomUUID(),
+          source: 'audio',
+          pitchMidi: state.activeMidi,
+          frequencyHz: 440 * Math.pow(2, (state.activeMidi - 69) / 12),
+          startMs: state.noteStart,
+          durationMs: Math.max(60, now - state.noteStart),
+          confidence: Math.min(0.95, Math.max(0.2, conf)),
+          staff: state.activeMidi >= 60 ? 0 : 1,
+        });
         state.activeMidi = midi;
         state.noteStart = now;
       }
