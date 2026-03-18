@@ -28,7 +28,7 @@ The demo provides two active input paths:
 
 ## Backend Implementation
 
-The runtime is built around active processing paths rather than display-only UI. The transcription architecture supports both model-backed and fallback execution paths so the system remains operational when ML initialization is unavailable.
+The transcription architecture supports both model-backed and fallback execution paths so the system remains operational when ML initialization is unavailable.
 
 Supported runtime modes:
 - **Spotify Basic Pitch ONNX**
@@ -37,7 +37,6 @@ Supported runtime modes:
 
 ## MIDI Support
 
-MIDI is an active runtime feature. The system performs:
 - Web MIDI access request
 - input enumeration
 - device connection
