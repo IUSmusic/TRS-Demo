@@ -30,7 +30,7 @@ export function autoCorrelate(buffer, sampleRate) {
       bestOffset = offset;
     }
   }
-  return bestCorrelation > 0.9 && bestOffset > 0 ? sampleRate / bestOffset : -1;
+  return bestCorrelation > 0.75 && bestOffset > 0 ? sampleRate / bestOffset : -1;
 }
 
 export function groupChordWindows(events, toleranceMs = 60) {
