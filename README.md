@@ -43,10 +43,28 @@ This repository may include more than one runtime path:
 - **prebuilt static demo path** for direct hosting without local build tooling
 - **fallback audio detection path** where model-backed inference is unavailable
 
-## Demo Features
+## Demo and experimental Features
+Update (18 March 2026)
+- Added `experimental.js` bootstrap loaded after `app.js`.
+- Modularized runtime into:
+  - `assets/js/audio.js`
+  - `assets/js/transcription.js`
+  - `assets/js/render.js`
+  - `assets/js/exporters.js`
+- Replaced full `innerHTML` refreshes with targeted DOM patching for:
+  - recent notes table
+  - timeline bars
+  - score view note cards
+- Added safer logging / error handling in audio tick, event ingestion, and MIDI handlers.
+- Increased event capacity to 500 with smart pruning by recency bucket.
+- Added session persistence via `localStorage`.
+- Added undo support with `Ctrl/Cmd+Z`.
+- Added save/share state generation with `Ctrl/Cmd+S`.
+- Added automatic tempo estimation feeding quantization.
+- Upgraded MusicXML export.
+- Added MIDI export via **Shift+click** on the existing MusicXML button.
 
-Depending on the included package and runtime path, the demo may provide:
-
+(17 March 2026)
 - microphone input
 - MIDI input
 - transcription event timeline
