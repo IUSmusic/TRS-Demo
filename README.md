@@ -21,7 +21,6 @@ This demo is intended to explore and present:
 - transcription event pipelines
 - notation preview and score rendering
 - export paths for captured musical material
-- I/US Music interaction, visual identity, and product direction
 
 It is a demonstration and prototype repository, not a production release.
 
