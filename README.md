@@ -1,6 +1,6 @@
 
 <a href="LICENSE">
-  <img src="images/license-badge.png" alt="License badge" width="70">
+  <img src="images/license-badge.png" alt="License badge" width="80">
 </a>
 
 
@@ -145,5 +145,5 @@ For licensing requests, commercial rights, redistribution requests, derivative w
 
 
 <a href="LICENSE">
-  <img src="images/license-badge.png" alt="License badge" width="70">
+  <img src="images/license-badge.png" alt="License badge" width="80">
 </a>
